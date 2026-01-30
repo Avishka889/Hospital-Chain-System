@@ -215,7 +215,7 @@ td {
   color: var(--cta-orange);
 }
 
-/* Doctor Profile Cards */
+/* Doctor Profile Cards - Refined */
 .doctor-card {
   background: var(--white);
   border-radius: var(--radius-md);
@@ -223,6 +223,8 @@ td {
   box-shadow: var(--shadow-soft);
   transition: var(--transition);
   border: 1px solid #eeeff2;
+  display: flex;
+  flex-direction: column;
 }
 
 .doctor-card:hover {
@@ -230,29 +232,70 @@ td {
   box-shadow: var(--shadow-medium);
 }
 
+.doctor-card-header {
+  height: 160px;
+  position: relative;
+  background: linear-gradient(135deg, var(--light-blue) 0%, #ffffff 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
 .doctor-card-img {
-  width: 100%;
-  height: 200px;
+  width: 160px;
+  height: 160px;
+  border-radius: 100%;
   object-fit: cover;
-  background: #f0f2f5;
+  border: 4px solid var(--white);
+  box-shadow: var(--shadow-soft);
+  background-color: #5f71a3;
 }
 
 .doctor-card-body {
-  padding: 24px;
+  padding: 20px;
+  text-align: center;
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 .doctor-card-title {
-  font-size: 1.25rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  margin-bottom: 8px;
-  color: var(--text-dark);
+  margin-bottom: 4px;
+  color: var(--primary-blue);
 }
 
 .doctor-card-spec {
-  color: var(--primary-blue);
   font-weight: 600;
-  font-size: 0.9rem;
+  font-size: 0.85rem;
   margin-bottom: 12px;
+  color: var(--cta-orange);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.doctor-card-desc {
+  font-size: 0.85rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin-bottom: 20px;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-style: italic;
+  padding: 0 10px;
+}
+
+.doctor-card-footer {
+  padding: 15px 20px;
+  border-top: 1px solid #f0f2f5;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
 }
 
 /* Photo Upload */

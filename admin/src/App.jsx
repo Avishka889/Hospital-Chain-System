@@ -7,6 +7,7 @@ import ManageDoctors from './pages/ManageDoctors';
 import CreateSession from './pages/CreateSession';
 import ViewSessions from './pages/ViewSessions';
 import Appointments from './pages/Appointments';
+import EditDoctor from './pages/EditDoctor';
 import './index.css';
 
 function App() {
@@ -16,6 +17,7 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/add-doctor" element={<AddDoctor />} />
+        <Route path="/edit-doctor/:id" element={<EditDoctor />} />
         <Route path="/manage-doctors" element={<ManageDoctors />} />
         <Route path="/create-session" element={<CreateSession />} />
         <Route path="/view-sessions" element={<ViewSessions />} />

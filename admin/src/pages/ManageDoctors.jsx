@@ -2,13 +2,19 @@ import React, { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import Modal from '../components/Modal';
 import { Eye, Edit, Trash2, User, ChevronLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const ManageDoctors = () => {
+    const navigate = useNavigate();
     const [doctors, setDoctors] = useState([]);
     const [view, setView] = useState('list'); // 'list' or 'profile'
     const [selectedDoctor, setSelectedDoctor] = useState(null);
-    const [modalConfig, setModalConfig] = useState({ isOpen: false, title: '', message: '', actions: [] });
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [modalType, setModalType] = useState(null); // 'delete-confirm', 'password-prompt', 'success'
+    const [actionTarget, setActionTarget] = useState(null);
+    const [pendingAction, setPendingAction] = useState(null);
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [modalMessage, setModalMessage] = useState('');
 
     useEffect(() => {
         const storedDoctors = JSON.parse(localStorage.getItem('doctors') || '[]');
@@ -16,66 +22,36 @@ const ManageDoctors = () => {
     }, []);
 
     const handleDeleteClick = (doc) => {
-        setModalConfig({
-            isOpen: true,
-            title: '⚠️ Confirm Deletion',
-            message: `Are you sure you want to delete ${doc.fullName}?\nThis action cannot be undone.`,
-            actions: [
-                { label: 'Delete', type: 'orange', onClick: () => promptPassword(doc, 'delete') },
-                { label: 'Cancel', type: 'outline', onClick: () => setModalConfig({ ...modalConfig, isOpen: false }) }
-            ]
-        });
+        setActionTarget(doc);
+        setPendingAction('delete');
+        setModalType('delete-confirm');
+        setModalMessage(`Are you sure you want to delete ${doc.fullName}?\nThis action cannot be undone.`);
+        setIsModalOpen(true);
     };
 
     const handleEditClick = (doc) => {
-        promptPassword(doc, 'edit');
+        setActionTarget(doc);
+        setPendingAction('edit');
+        setConfirmPassword('');
+        setModalType('password-prompt');
+        setModalMessage('Please enter Admin password to edit doctor.');
+        setIsModalOpen(true);
     };
 
-    const promptPassword = (doc, action) => {
-        setModalConfig({
-            isOpen: true,
-            title: '🔒 Admin Verification',
-            message: `Please enter Admin password to ${action} doctor.`,
-            content: (
-                <input
-                    type="password"
-                    placeholder="Admin Password"
-                    className="form-control"
-                    onChange={(e) => setConfirmPassword(e.target.value)}
-                    style={{ marginTop: '15px' }}
-                />
-            ),
-            actions: [
-                { label: 'Confirm', type: 'primary', onClick: () => verifyAction(doc, action) },
-                { label: 'Cancel', type: 'outline', onClick: () => setModalConfig({ ...modalConfig, isOpen: false }) }
-            ]
-        });
-    };
-
-    const verifyAction = (doc, action) => {
-        if (confirmPassword === 'Admin@123') { // Hardcoded for prototype
-            if (action === 'delete') {
-                const updated = doctors.filter(d => d.id !== doc.id);
+    const handlePasswordConfirm = () => {
+        if (confirmPassword === 'Admin@123') {
+            if (pendingAction === 'delete') {
+                const updated = doctors.filter(d => d.id !== actionTarget.id);
                 setDoctors(updated);
                 localStorage.setItem('doctors', JSON.stringify(updated));
-                setModalConfig({
-                    isOpen: true,
-                    title: '✅ Deleted',
-                    message: 'Doctor removed successfully.',
-                    actions: [{
-                        label: 'OK', type: 'primary', onClick: () => {
-                            setModalConfig({ ...modalConfig, isOpen: false });
-                            setView('list');
-                        }
-                    }]
-                });
-            } else {
-                // Edit logic would go here
-                alert('Edit mode enabled for ' + doc.fullName);
-                setModalConfig({ ...modalConfig, isOpen: false });
+                setModalType('success');
+                setModalMessage('Doctor removed successfully.');
+            } else if (pendingAction === 'edit') {
+                setIsModalOpen(false);
+                navigate(`/edit-doctor/${actionTarget.id}`);
             }
         } else {
-            alert('Incorrect Password!');
+            alert('Incorrect Password! Please try again.');
         }
     };
 
@@ -143,13 +119,33 @@ const ManageDoctors = () => {
                 </div>
 
                 <Modal
-                    isOpen={modalConfig.isOpen}
-                    title={modalConfig.title}
-                    message={modalConfig.message}
-                    actions={modalConfig.actions}
-                    onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                    isOpen={isModalOpen}
+                    title={modalType === 'password-prompt' ? '🔒 Admin Verification' : modalType === 'delete-confirm' ? '⚠️ Confirm Deletion' : '✅ Success'}
+                    message={modalMessage}
+                    actions={
+                        modalType === 'password-prompt' ? [
+                            { label: 'Confirm', type: 'primary', onClick: handlePasswordConfirm },
+                            { label: 'Cancel', type: 'outline', onClick: () => setIsModalOpen(false) }
+                        ] : modalType === 'delete-confirm' ? [
+                            { label: 'Enter Password', type: 'orange', onClick: () => setModalType('password-prompt') },
+                            { label: 'Cancel', type: 'outline', onClick: () => setIsModalOpen(false) }
+                        ] : [
+                            { label: 'OK', type: 'primary', onClick: () => { setIsModalOpen(false); setView('list'); } }
+                        ]
+                    }
+                    onClose={() => setIsModalOpen(false)}
                 >
-                    {modalConfig.content}
+                    {modalType === 'password-prompt' && (
+                        <input
+                            type="password"
+                            placeholder="Admin Password"
+                            className="form-control"
+                            value={confirmPassword}
+                            onChange={(e) => setConfirmPassword(e.target.value)}
+                            style={{ marginTop: '15px' }}
+                            autoFocus
+                        />
+                    )}
                 </Modal>
             </Layout>
         );
@@ -162,27 +158,33 @@ const ManageDoctors = () => {
                 <p style={{ color: 'var(--text-muted)' }}>View, edit and manage your medical staff.</p>
             </header>
 
-            <div className="card-grid">
+            <div className="card-grid" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
                 {doctors.map(doc => (
                     <div key={doc.id} className="doctor-card">
-                        <img src={doc.photo || 'https://via.placeholder.com/300x200?text=No+Photo'} alt={doc.fullName} className="doctor-card-img" />
+                        <div className="doctor-card-header">
+                            {doc.photo ? (
+                                <img src={doc.photo} alt={doc.fullName} className="doctor-card-img" />
+                            ) : (
+                                <div className="doctor-card-img" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#e6f0ff', color: 'var(--primary-blue)' }}>
+                                    <User size={40} />
+                                </div>
+                            )}
+                        </div>
                         <div className="doctor-card-body">
                             <h3 className="doctor-card-title">{doc.fullName}</h3>
                             <p className="doctor-card-spec">{doc.specialization}</p>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '20px' }}>
-                                Contact: {doc.contact}
-                            </p>
-                            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-                                <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => viewProfile(doc)} title="View Profile">
-                                    <Eye size={18} />
-                                </button>
-                                <button className="btn btn-outline" style={{ padding: '8px' }} onClick={() => handleEditClick(doc)} title="Edit">
-                                    <Edit size={18} />
-                                </button>
-                                <button className="btn btn-outline" style={{ padding: '8px', color: '#ff4d4d' }} onClick={() => handleDeleteClick(doc)} title="Delete">
-                                    <Trash2 size={18} />
-                                </button>
-                            </div>
+                            <p className="doctor-card-desc">"{doc.careerDesc}"</p>
+                        </div>
+                        <div className="doctor-card-footer">
+                            <button className="btn btn-outline" style={{ padding: '10px' }} onClick={() => viewProfile(doc)} title="View Profile">
+                                <Eye size={18} />
+                            </button>
+                            <button className="btn btn-outline" style={{ padding: '10px' }} onClick={() => handleEditClick(doc)} title="Edit">
+                                <Edit size={18} />
+                            </button>
+                            <button className="btn btn-outline" style={{ padding: '10px', color: '#ff4d4d' }} onClick={() => handleDeleteClick(doc)} title="Delete">
+                                <Trash2 size={18} />
+                            </button>
                         </div>
                     </div>
                 ))}
@@ -196,13 +198,33 @@ const ManageDoctors = () => {
             )}
 
             <Modal
-                isOpen={modalConfig.isOpen}
-                title={modalConfig.title}
-                message={modalConfig.message}
-                actions={modalConfig.actions}
-                onClose={() => setModalConfig({ ...modalConfig, isOpen: false })}
+                isOpen={isModalOpen}
+                title={modalType === 'password-prompt' ? '🔒 Admin Verification' : modalType === 'delete-confirm' ? '⚠️ Confirm Deletion' : '✅ Success'}
+                message={modalMessage}
+                actions={
+                    modalType === 'password-prompt' ? [
+                        { label: 'Confirm', type: 'primary', onClick: handlePasswordConfirm },
+                        { label: 'Cancel', type: 'outline', onClick: () => setIsModalOpen(false) }
+                    ] : modalType === 'delete-confirm' ? [
+                        { label: 'Enter Password', type: 'orange', onClick: () => setModalType('password-prompt') },
+                        { label: 'Cancel', type: 'outline', onClick: () => setIsModalOpen(false) }
+                    ] : [
+                        { label: 'OK', type: 'primary', onClick: () => { setIsModalOpen(false); setView('list'); } }
+                    ]
+                }
+                onClose={() => setIsModalOpen(false)}
             >
-                {modalConfig.content}
+                {modalType === 'password-prompt' && (
+                    <input
+                        type="password"
+                        placeholder="Admin Password"
+                        className="form-control"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        style={{ marginTop: '15px' }}
+                        autoFocus
+                    />
+                )}
             </Modal>
         </Layout>
     );
